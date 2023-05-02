@@ -48,13 +48,22 @@ class Layer:
     ksize: int
     padding: int
     stride: int
+    pool: Optional[int]
 
     output_size: Optional[int] = None
 
     def conv(self, input_size: int, layer_number: int = 0) -> int:
         self.output_size = np.floor((input_size - self.ksize + 2 * self.padding) / self.stride).astype(int) + 1
-        Logger.instance().debug(f"\n## LAYER {layer_number} ##\noutput size: {self.output_size}")
 
+        if self.output_size is None:
+            Logger.instance().critical("something went wrong while computing the output size! (None)")
+            raise ValueError("something went wrong while computing the output size! (None)")
+
+        if self.pool is not None:
+            pool = self.pool if self.pool % 2 == 0 else self.pool + 1
+            self.output_size //= 2
+        
+        Logger.instance().debug(f"\n## LAYER {layer_number} ##\noutput size: {self.output_size}")
         return self.output_size
 
     @classmethod
@@ -76,7 +85,11 @@ class Layer:
             ksize = from_int(obj.get(CONFIG_KSIZE))
             padding = from_int(obj.get(CONFIG_PADDING))
             stride = from_int(obj.get(CONFIG_STRIDE))
+            pool = from_union([from_none, from_int], obj.get(CONFIG_POOL))
 
+            if pool == 0:
+                pool = None
+                Logger.instance().warning("pool is interpreted as None")
             if stride == 0:
                 raise ZeroDivisionError("stride value cannot be 0.")
         except TypeError as te:
@@ -84,7 +97,7 @@ class Layer:
             sys.exit(-1)
 
         Logger.instance().info("Layer deserialized correctly")
-        return Layer(ksize, padding, stride)
+        return Layer(ksize, padding, stride, pool)
 
     def serialize(self) -> dict:
         result: dict = {}
@@ -92,6 +105,7 @@ class Layer:
         result[CONFIG_KSIZE] = from_int(self.ksize)
         result[CONFIG_PADDING] = from_int(self.padding)
         result[CONFIG_STRIDE] = from_int(self.stride)
+        result[CONFIG_POOL] = from_union([from_none, from_int], self.pool)
         
         Logger.instance().info("Serializing Layers...")
         return result

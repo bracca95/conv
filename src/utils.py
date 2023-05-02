@@ -142,8 +142,8 @@ class Logger:
         file_handler.setFormatter(formatter)
 
         out_handler = logging.StreamHandler(sys.stdout)
-        out_handler.setLevel(logging.INFO)
-        out_handler.addFilter(lambda record: record.levelno == logging.INFO)
+        out_handler.setLevel(logging.DEBUG)
+        out_handler.addFilter(lambda record: record.levelno == logging.DEBUG)
         out_handler.setFormatter(formatter)
 
         err_handler = logging.StreamHandler(sys.stderr)
