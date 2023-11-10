@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 import json
@@ -52,31 +54,38 @@ class Layer:
 
     output_size: Optional[int] = None
 
-    def conv(self, input_size: int, layer_number: int = 0) -> int:
-        self.output_size = np.floor((input_size - self.ksize + 2 * self.padding) / self.stride).astype(int) + 1
+    @staticmethod
+    def conv(layer: Layer, input_size: int, layer_number: int = 0) -> int:
+        layer.output_size = np.floor((input_size - layer.ksize + 2 * layer.padding) / layer.stride).astype(int) + 1
 
-        if self.output_size is None:
+        if layer.output_size is None:
             Logger.instance().critical("something went wrong while computing the output size! (None)")
             raise ValueError("something went wrong while computing the output size! (None)")
 
-        if self.pool is not None:
-            pool = self.pool if self.pool % 2 == 0 else self.pool + 1
-            self.output_size //= 2
+        if layer.pool is not None:
+            pool = layer.pool if layer.pool % 2 == 0 else layer.pool + 1
+            layer.output_size //= 2
         
-        Logger.instance().debug(f"\n## LAYER {layer_number} ##\noutput size: {self.output_size}")
-        return self.output_size
+        Logger.instance().debug(f"\n## LAYER {layer_number} ##\noutput size: {layer.output_size}")
+        return layer.output_size
 
-    @classmethod
-    def chain_conv(cls, og_img_size: int, layers: List['Layer']):
+    @staticmethod
+    def transposed(layer: Layer, input_size: int, layer_number: int=0) -> int:
+        layer.output_size = (input_size - 1) * layer.stride - 2 * (layer.padding) + layer.ksize
+        Logger.instance().debug(f"\n## LAYER {layer_number} ##\noutput size: {layer.output_size}")
+
+        return layer.output_size
+
+    @staticmethod
+    def chain_operation(op: Callable[[Layer, int, int], int], og_img_size: int, layers: List['Layer']):
         i = 0
 
         while i < len(layers):
             if i == 0:
-                layers[i].conv(og_img_size, i)
+                op(layers[i], og_img_size, i)
             else:
-                layers[i].conv(layers[i-1].output_size, i)
-            i += 1
-        
+                op(layers[i], layers[i-1].output_size, i)
+            i += 1      
 
     @classmethod
     def deserialize(cls, obj: Any) -> 'Layer':
@@ -113,6 +122,7 @@ class Layer:
 
 @dataclass
 class Config:
+    mode: str
     input_img_size: int
     layers: List[Layer]
 
@@ -121,6 +131,7 @@ class Config:
         obj = Utils.read_json(str_path)
         
         try:
+            mode = from_str(obj.get(CONFIG_MODE))
             input_img_size = from_int(obj.get(CONFIG_INPUT_IMG_SIZE))
             layers = from_list(Layer.deserialize, obj.get(CONFIG_LAYERS))
         except TypeError as te:
@@ -128,7 +139,7 @@ class Config:
             sys.exit(-1)
         
         Logger.instance().info("Config deserialized correctly")
-        return Config(input_img_size, layers)
+        return Config(mode, input_img_size, layers)
 
     def serialize(self, directory: str, filename: str):
         result: dict = {}
@@ -140,6 +151,7 @@ class Config:
             Logger.instance().critical(f"{fnf.args}")
             sys.exit(-1)
         
+        result[CONFIG_MODE] = from_str(self.mode)
         result[CONFIG_INPUT_IMG_SIZE] = from_int(self.input_img_size)
         result[CONFIG_LAYERS] = from_list(lambda x: to_class(Layer, x), self.layers)
         

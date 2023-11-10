@@ -1,29 +1,24 @@
 {
-	"input_img_size": 28,
+	"mode": "transposed",
+	"input_img_size": 2,
 	"layers": [
 		{
-			"ksize": 3,
-			"padding": 1,
-			"stride": 1,
-			"pool": 2
+			"ksize": 2,
+			"stride": 2,
+			"padding": 0,
+			"pool": null
 		},
         {
-            "ksize": 3,
-            "padding": 1,
-            "stride": 1,
-            "pool": 2
+            "ksize": 2,
+            "stride": 2,
+            "padding": 0,
+            "pool": null
         },
         {
             "ksize": 3,
-            "padding": 1,
             "stride": 1,
-            "pool": 2
-        },
-        {
-            "ksize": 3,
             "padding": 1,
-            "stride": 1,
-            "pool": 2
+            "pool": null
         }
 	]
 }
